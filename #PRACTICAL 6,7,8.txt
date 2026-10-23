@@ -1,0 +1,286 @@
+#PRACTICAL 6
+#1.	Extract all three CSV files.  
+import pandas as pd
+orders = pd.read_csv("orders.csv")
+members = pd.read_csv("members.csv")
+restaurants = pd.read_csv("restaurants.csv")
+
+print("Orders:", orders.shape)
+print("Members:", members.shape)
+print("Restaurants:", restaurants.shape)
+
+#2.	Profile the raw data.  
+print("\n---Orders---")
+print(orders.head(5))
+print(orders.info())
+print(orders.describe(include = "all"))
+
+print("\n---Members---")
+print(members.head(5))
+print(members.info())
+print(members.describe(include = "all"))
+
+print("\n---Restaurants---")
+print(restaurants.head(5))
+print(restaurants.info())
+print(restaurants.describe(include = "all"))
+
+#3.Identify missing values.  
+print("Orders:\n:",orders.isnull().sum())
+print("Members:\n:",members.isnull().sum())
+print("Restaurants:\n",restaurants.isnull().sum())
+
+#4.	Identify duplicates.  
+print("Orders duplicates:",orders.duplicated().sum())
+print("Members duplicates:",members.duplicated().sum())
+print("Restaurants duplicates:",restaurants.duplicated().sum())
+
+#5.Standardize categorical variables.  
+for df in [orders,members,restaurants]:
+    for col in df.select_dtypes("object"):
+        df[col] = df[col].str.strip().str.lower()
+print("Categorical values standardized")
+
+#6.Validate numerical variables. 
+print("Negative values in Orders:")
+print(orders.select_dtypes("number").lt(0).sum())
+
+print("Negative values in Members:")
+print(members.select_dtypes("number").lt(0).sum())
+ 
+print("Negative values in Restaurants:")
+print(restaurants.select_dtypes("number").lt(0).sum())
+
+#7.Validate dates.  
+orders["date"] = pd.to_datetime(
+    orders["date"],
+    errors="coerce"
+)
+ 
+print("Invalid dates:", orders["date"].isnull().sum())
+
+#8.	Detect invalid records.  
+print("Invalid Orders:")
+print(orders[orders["total_order"] <= 0])
+ 
+print("Invalid Members:")
+print(members[members["monthly_budget"] < 0])
+ 
+print("Invalid Restaurants:")
+print(restaurants[restaurants["income_persentage"] < 0])
+
+#9.	Handle missing values.  
+for df in [orders,members,restaurants]:
+    for col in df.select_dtypes("number"):
+        df[col] = df[col].fillna(df[col].median())
+    for col in df.select_dtypes("object"):
+        df[col] = df[col].fillna("unknown")
+print("Missing Values handled")
+
+#10.Join the three datasets.  
+data = orders.merge(members,left_on = "member_id",right_on = "id",suffixes = ("order","_member"))
+data = data.merge(restaurants,left_on="restaurant_id",right_on="id",suffixes=(" ","_restaurant"))
+print(data.head())
+
+#11.Create calculated variables.  
+data["year"] = data["date"].dt.year
+data["month"] = data["date"].dt.month
+data["budget_used_%"] = (data["total_order"]/data["monthly_budget"]*100)
+print(data.head())
+
+#12.Perform data validation.  
+print("Invalid member IDs:",(~orders["member_id"].isin(members["id"])).sum())
+print("Invalid restaurant IDs:",(~orders["restaurant_id"].isin(restaurants["id"])).sum())
+
+#13.Generate a data-quality report.  
+def report(df):
+    return pd.DataFrame({
+        "Data Type": df.dtypes,
+        "Missing":df.isnull().sum(),
+        "Unique":df.nunique()
+    })
+print("Orders Quality Report")
+print(report(orders))
+
+print("Members Quality Report:")
+print(report(members))
+
+print("Restaurants Quality Report:")
+print(report(restaurants))
+
+#14.Save cleaned CSV files.  
+orders.to_csv("cleaned_orders.csv", index=False)
+members.to_csv("cleaned_members.csv", index=False)
+restaurants.to_csv("cleaned_restaurants.csv", index=False)
+ 
+print("Cleaned files saved.")
+
+#15.Load the integrated data into SQLite.  
+import sqlite3
+connection = sqlite3.connect("restaurant.db")
+
+orders.to_sql("orders",connection,if_exists="replace",index = False)
+members.to_sql("members",connection,if_exists="replace",index=False)
+restaurants.to_sql("restaurants",connection,if_exists="replace",index= False)
+
+print("SQLite database created.")
+
+#16.Execute SQL analytical queries.  
+q1 = """
+SELECT COUNT(*) AS Total_Orders
+FROM orders;
+"""
+
+q2 = """
+SELECT restaurant_id,COUNT(*) AS Orders
+FROM orders
+GROUP BY restaurant_id
+ORDER BY Orders DESC
+LIMIT 10;
+"""
+
+q3 = """
+SELECT member_id,COUNT(*) AS orders
+FROM orders
+GROUP BY member_id
+ORDER BY Orders DESC
+LIMIT 10;
+"""
+
+q4 = """
+SELECT r.restaurant_name,
+       SUM(o.total_order) AS Sales
+FROM restaurants r
+JOIN orders o
+    ON r.id = o.restaurant_id
+GROUP BY r.id, r.restaurant_name
+ORDER BY Sales DESC
+LIMIT 10;
+"""
+
+for q in [q1,q2,q3,q4]:
+    print(pd.read_sql_query(q,connection))
+
+#17.Generate at least five visualizations.  
+#Top restaurants
+import matplotlib.pyplot as plt
+x = data.groupby("restaurant_name")["total_order"].sum().nlargest(10)
+x.plot(kind ="bar",color = "royalblue",title="Top Restaurants by Sales")
+plt.ylabel("Sales")
+plt.tight_layout()
+plt.show()
+
+#2. Monthly sales
+x = data.groupby("month")["total_order"].sum()
+ 
+x.plot(marker="o", color="orange", title="Monthly Sales")
+plt.ylabel("Sales")
+plt.tight_layout()
+plt.show()
+
+#3. Sales by hour
+x = data.groupby("hour")["total_order"].sum()
+ 
+x.plot(kind="bar", color="green", title="Sales by Hour")
+plt.ylabel("Sales")
+plt.tight_layout()
+plt.show()
+
+#4. Sales by gender
+x = data.groupby("sex")["total_order"].sum()
+ 
+x.plot(kind="bar", color="purple", title="Sales by Gender")
+plt.ylabel("Sales")
+plt.tight_layout()
+plt.show()
+
+#5. Sales by city
+x = data.groupby("city_id")["total_order"].sum().nlargest(10)
+ 
+x.plot(kind="bar", color="crimson", title="Top Cities by Sales")
+plt.ylabel("Sales")
+plt.tight_layout()
+plt.show()
+
+#PRACTICAL 7
+Sales by Category (Clustered column chart)
+X-axis: Category
+Y-axis: Sales
+
+Profit by Sub-Category (Clustered bar chart)
+X-axis: Profit
+Y-axis: Sub.Category
+Sort descending by Profit (three dots → Sort axis → Profit → Sort descending)
+
+Sales by Year (Line chart)
+X-axis: Order.Date (keep only Year, remove Quarter, Month and Day)
+Y-axis: Sales
+
+Sales by Segment (Donut chart)
+Legend: Segment
+Values: Sales
+
+Sales by Region (Clustered column chart)
+X-axis: Region
+Y-axis: Sales
+
+Cards
+Card 1: Sales
+Card 2: Profit
+Card 3: Quantity
+
+Slicers
+Slicer 1: Category
+Slicer 2: Region
+#PRACTICAL 8
+import numpy as np
+import pandas as pd
+from scipy import stats
+
+data = {
+    'Student':[1,2,3,4,5,6,7,8,9,10],
+    'Practice_Hours':[2,3,4,5,6,7,8,9,10,11],
+    'Score_Before':[52,55,59,61,64,67,72,75,78,82],
+    'Score_After':[61,63,65,67,68,71,75,78,80,84]
+}
+df = pd.DataFrame(data)
+df
+
+#Test whether Score_Before and Score_After differ significantly for the same students.
+# Paired t-test 
+t, p = stats.ttest_rel(data["Score_Before"], data["Score_After"])
+
+print("Test Statistic:", t)
+print("P-value:", p)
+
+if p < 0.05:
+    print("Reject H0: Significant difference exists.")
+else:
+    print("Accept H0: No significant difference.")
+
+#•	Calculate the Pearson correlation between Practice_Hours and Score_After.
+d = df[["Practice_Hours", "Score_After"]].dropna()
+
+r, p = stats.pearsonr(d["Practice_Hours"], d["Score_After"])
+
+print("Pearson Correlation (r):", r)
+print("P-value:", p)
+
+#95%Interval
+scores = df["Score_After"].dropna()
+
+mean = scores.mean()
+n = len(scores)
+se = stats.sem(scores)
+ci = stats.t.interval(0.95, n-1, loc=mean, scale=se)
+
+print("Mean:", mean)
+print("Test statistic: Not applicable")
+print("P-value: Not applicable")
+print("95% Confidence Interval:", (float(ci[0]), float(ci[1])))
+
+
+
+
+
+
