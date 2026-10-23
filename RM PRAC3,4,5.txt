@@ -1,0 +1,303 @@
+#PRACTICAL 3
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from math import ceil
+
+#Q1. Load the Employee Salary dataset into Python using Pandas. 
+data = pd.read_csv("employee_salary_dataset.csv")
+print("Dataset Shape:",data.shape)
+print("Total Population:",len(data))
+
+#Q2. Determine the required sample size using the 95% confidence level and 5% margin of error. 
+N = len(data)
+Z = 1.96
+p = 0.5
+E = 0.05
+
+n0 = (Z**2*p*(1-p))/(E**2)
+sample_size = n0/(1+((n0-1)/N))
+sample_size = ceil(sample_size)
+print("Required Sample Size:",sample_size)
+
+#Q3. Perform the following sampling techniques: 
+#Simple Random Sampling 
+random_sample = data.sample(n=sample_size,random_state = 2)
+print("Sample Size:",len(random_sample))
+print(random_sample.head())
+
+#Systematic Sampling 
+interval = N//sample_size
+np.random.seed(42)
+start = np.random.randint(0,interval)
+systematic_sample = data.iloc[start:interval].head(sample_size)
+print("Sample Size:",len(systematic_sample))
+print(systematic_sample.head())
+
+#Stratified Sampling (based on Department)
+stratified_parts = []
+
+for department,group in data.groupby('Department'):
+    group_sample_size = round((len(group)/len(data)*sample_size))
+    selected_group = group.sample(n=group_sample_size,random_state = 42)
+    stratified_parts.append(selected_group)
+
+stratified_sample = pd.concat(stratified_parts,ignore_index = True)
+print(stratified_sample.head())
+
+#Cluster Sampling(based on Job Level)
+clusters = data["Department"].dropna().unique()
+np.random.seed()
+selected_cluster = np.random.choice(clusters)
+cluster_sample = data[data["Department"]==selected_cluster]
+print("Selected cluster:",selected_cluster)
+print(cluster_sample.head())
+print("Number of employees in selected cluster:",len(cluster_sample))
+
+convenience_sample = data.head(sample_size)
+convenience_sample
+
+purposive_sample = data[data["Monthly_Salary"]>=80000]
+purposive_sample
+
+#Sample size and average salary comparison
+comparison = pd.DataFrame({"Sampling Technique":["Complete Dataset","Simple Random","Systematic","Stratified","Cluster","Convenience","Purposive"],
+
+                           "Number of Records":[
+                               len(data),
+                               len(random_sample),
+                               len(systematic_sample),
+                               len(stratified_sample),
+                               len(cluster_sample),
+                               len(convenience_sample),
+                               len(purposive_sample)],
+                           "Average Salary":[
+                               data["Monthly_Salary"].mean(),
+                               random_sample["Monthly_Salary"].mean(),
+                               systematic_sample["Monthly_Salary"].mean(),
+                               stratified_sample["Monthly_Salary"].mean(),
+                               cluster_sample["Monthly_Salary"].mean(),
+                               convenience_sample["Monthly_Salary"].mean(),
+                               purposive_sample["Monthly_Salary"].mean()
+                           ]})
+
+comparison["Average Salary"] = comparison["Average Salary"].round(2)
+print("\nSampling Comparison:")
+display(comparison)            
+
+#Calculate descriptive statistics (Mean, Median, Standard Deviation, Minimum, Maximum) for the Salary column. 
+statistics = random_sample["Monthly_Salary"].describe()
+print("Statistical Summary of Salary")
+print(statistics)
+
+#Save each sampled dataset into separate CSV files.
+random_sample.to_csv("simple_random_sample.csv", index=False) 
+systematic_sample.to_csv("systematic_sample.csv", index=False) 
+stratified_sample.to_csv("stratified_sample.csv", index=False) 
+cluster_sample.to_csv("cluster_sample.csv", index=False) 
+convenience_sample.to_csv("convenience_sample.csv", index=False) 
+purposive_sample.to_csv("purposive_sample.csv", index=False)
+print("All sampled datasets have been saved successfully.")
+
+#PRACTICAL 4
+#1.	Import the necessary Python libraries required for data analysis and visualization. 
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+
+#2.	Load the EmployeeSalary.csv dataset into a Pandas DataFrame
+data = pd.read_csv("employee_salary_dataset.csv")
+
+#3.	Display the first five records of the dataset. 
+data.head(5)
+
+#4.	Display the dimensions (number of rows and columns) of the dataset. 
+print("Dimension of data",data.shape)
+print("Rows:",data.shape[0])
+print("Columns:",data.shape[1])
+
+#5.	Display the names of all the columns. 
+print("Column Names")
+data.columns
+
+#6.	Display complete information about the dataset, including data types and non-null values. 
+print("Dataset Information")
+data.info()
+
+#7.	Identify and display the number of missing values in each column. 
+data.isnull().sum()
+
+#8.	Generate descriptive statistics for all numerical columns. 
+data.describe()
+
+#9.	Calculate the following statistical measures for the Salary column: 
+#Mean 
+#Median 
+#Standard Deviation 
+#Variance 
+#Minimum Salary 
+#Maximum Salary 
+
+print("Statistical Measures:")
+print("Mean of Salary:",data["Monthly_Salary"].mean())
+print("Median of Salary:",data["Monthly_Salary"].median())
+print("Standard Deviation:",data["Monthly_Salary"].std())
+print("Variance:",data["Monthly_Salary"].var())
+print("Maximum Salary:",data["Monthly_Salary"].max())
+print("Minimum Salary:",data["Monthly_Salary"].min())
+
+#10.Find the most frequently occurring Department in the dataset. 
+most_frequent_department = data["Department"].mode()[0]
+print("Most frequently Occuring Department:",most_frequent_department)
+
+#11.Compute the correlation matrix among all numerical attributes. 
+correlation_matrix = data.corr(numeric_only = True)
+print("Correlation Matrix:",correlation_matrix)
+
+#12.Display the frequency distribution of employees across different departments. 
+department_frequency = data["Department"].value_counts()
+print("Frequency Distribution of Employees Across Departments:",department_frequency)
+
+#13.Calculate the average salary of employees department-wise. 
+avg_salary_by_dept = data.groupby("Department")["Monthly_Salary"].mean()
+print("Average Salary by Department:",avg_salary_by_dept)
+
+#14.Display the top five employees with the highest salaries. 
+top_five_emp = data.sort_values(by="Monthly_Salary",ascending = False).head(5)
+print("Top Five Employees with Highest Salaries:",top_five_emp)
+
+#15.Display the details of employees whose salary is greater than ₹80,000. 
+high_salary_employees = data[data["Monthly_Salary"]>80000]
+print("Employees with Monthly Salary greater than 80000:",high_salary_employees)
+
+#16.Plot a Histogram to visualize the distribution of employee salaries. 
+plt.figure(figsize=(8,5))
+plt.hist(data["Monthly_Salary"],bins = 10,color = "skyblue",edgecolor = "black")
+plt.title("Distribution of Employee Salaries")
+plt.xlabel("Monthly_Salary")
+plt.ylabel("Number of Employees")
+
+#17.Plot a Bar Chart showing the number of employees in each department. 
+department_count = data["Department"].value_counts()
+
+plt.figure(figsize=(8,5))
+plt.bar(department_count.index,department_count.values,color = "skyblue",edgecolor = "black")
+plt.title("Number of Employees in each department")
+plt.xlabel("Department")
+plt.ylabel("Number of Employees")
+plt.xticks(rotation = 45)
+plt.show()
+
+#18.Save the descriptive statistical summary into a CSV file named Statistics.csv.
+statistics_summary = data.describe()
+statistics_summary.to_csv("Statistics.csv")
+print("Descriptive statistical summary saved as Statistics.csv")
+
+
+#PRACTICAL 5
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+#1.Load and understand the dataset
+df = pd.read_csv("employee_salary_dataset.csv")
+print(df.head(5))
+print("Shape:",df.shape)
+print("Missing values:",df.isnull().sum())
+print("Duplicate rows:",df.duplicated().sum())
+
+#2.	Perform descriptive statistical analysis. Calculate appropriate descriptive statistics for numerical variables
+print(df[["Experience_Years","Age","Monthly_Salary"]].describe())
+print("\nMedian:")
+print(df[["Experience_Years","Age","Monthly_Salary"]].median())
+
+#3.	Perform correlation analysis 
+correlation = df[["Experience_Years","Age","Monthly_Salary"]].corr()
+print("\nCorrelation Matrix",correlation.round(3))
+
+#4.	Create suitable visualizations to study: 
+# Experience Years vs Monthly Salary
+plt.scatter(df["Experience_Years"],df["Monthly_Salary"])
+plt.xlabel("Experience Years")
+plt.ylabel("Monthly_Salary")
+plt.title("Experience vs Monthly Salary")
+plt.show()
+
+#Age vs Monthly Salary 
+plt.scatter(df["Age"],df["Monthly_Salary"])
+plt.xlabel("Age")
+plt.ylabel("Monthly_Salary")
+plt.title("Age vs Monthly Salary")
+plt.show()
+
+#Average Monthly Salary across Departments
+avg_salary = df.groupby("Department")["Monthly_Salary"].mean()
+plt.bar(avg_salary.index, avg_salary.values)
+plt.xlabel("Department")
+plt.ylabel("Average Monthly Salary")
+plt.title("Average Monthly Salary by Department")
+plt.xticks(rotation=45)
+plt.show()
+
+#5.	Develop a multiple linear regression model
+#Consider Monthly_Salary as the dependent variable. 
+#Initially use Age and Experience_Years as independent variables. 
+#Train a multiple linear regression model. 
+#Obtain and interpret: Intercept ,Regression coefficients ,R² value
+
+from sklearn.linear_model import LinearRegression
+ 
+# Independent variables
+X = df[["Experience_Years", "Age"]]
+ 
+# Dependent variable
+y = df["Monthly_Salary"]
+ 
+# Create model
+model = LinearRegression()
+ 
+# Train model
+model.fit(X, y)
+y_pred = model.predict(X)
+# Results
+print("\nRegression Results:")
+print("Intercept:", round(model.intercept_, 2))
+print("Experience coefficient:", round(model.coef_[0], 2))
+print("Age coefficient:", round(model.coef_[1], 2))
+ 
+# R-squared
+print("R² value:", round(model.score(X, y), 3))
+
+#6.Extend the multivariate analysis
+from sklearn.metrics import r2_score
+X2 = pd.get_dummies(
+    data[["Age", "Experience_Years", "Education_Level"]],
+    drop_first=True,
+    dtype=int
+)
+
+model2 = LinearRegression()
+model2.fit(X2, y)
+
+y_pred2 = model2.predict(X2)
+
+print("New Intercept:", model2.intercept_)
+print("New Coefficients:", model2.coef_)
+print("New R2 Score:", r2_score(y, y_pred2))
+
+#7.Interpret and make a decision
+print("Old R2 Score:", r2_score(y, y_pred))
+print("New R2 Score:", r2_score(y, y_pred2))
+
+if r2_score(y, y_pred2) > r2_score(y, y_pred):
+    print("Decision: The extended model has a better fit.")
+else:
+    print("Decision: The extended model does not improve the R2 score.")
+
+
+
+
+
+
+
+
